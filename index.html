@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Posts</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#000000">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -188,6 +193,70 @@
     fill: currentColor;
   }
 
+  .compose-footer {
+    justify-content: space-between;
+  }
+
+  .compose-media-btn {
+    background: none;
+    border: none;
+    color: #1d9bf0;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+  }
+
+  .compose-media-btn svg {
+    width: 22px;
+    height: 22px;
+    fill: currentColor;
+  }
+
+  .compose-preview {
+    position: relative;
+    margin-top: 8px;
+    display: none;
+  }
+
+  .compose-preview img {
+    width: 100%;
+    max-height: 280px;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 1px solid #2f3336;
+  }
+
+  .compose-preview-remove {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.75);
+    color: #fff;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  .post-image {
+    margin-top: 10px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #2f3336;
+  }
+
+  .post-image img {
+    width: 100%;
+    display: block;
+  }
+
   .post-action:active { color: #1d9bf0; }
   .post-action.delete:active { color: #f4212e; }
 
@@ -227,7 +296,15 @@
         id="composeInput"
         rows="1"
       ></textarea>
+      <div class="compose-preview" id="composePreview">
+        <img id="previewImg" src="" alt="Preview">
+        <button class="compose-preview-remove" id="removeImg">&times;</button>
+      </div>
       <div class="compose-footer">
+        <button class="compose-media-btn" id="mediaBtn" title="Add image">
+          <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zm-5-7l-3 3.72L9 13l-3 4h12l-4-5z"/></svg>
+        </button>
+        <input type="file" id="mediaInput" accept="image/*" hidden>
         <button class="post-btn" id="postBtn" disabled>Post</button>
       </div>
     </div>
@@ -248,6 +325,13 @@ const input = document.getElementById('composeInput');
 const postBtn = document.getElementById('postBtn');
 const timeline = document.getElementById('timeline');
 const emptyState = document.getElementById('emptyState');
+const mediaBtn = document.getElementById('mediaBtn');
+const mediaInput = document.getElementById('mediaInput');
+const composePreview = document.getElementById('composePreview');
+const previewImg = document.getElementById('previewImg');
+const removeImgBtn = document.getElementById('removeImg');
+
+let pendingImage = null;
 
 let posts = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
 
@@ -285,7 +369,8 @@ function renderPost(post, prepend) {
         <span class="post-dot">&middot;</span>
         <span class="post-time">${formatTime(post.ts)}</span>
       </div>
-      <div class="post-text">${escapeHtml(post.text)}</div>
+      ${post.text ? `<div class="post-text">${escapeHtml(post.text)}</div>` : ''}
+      ${post.image ? `<div class="post-image"><img src="${post.image}" alt="Post image"></div>` : ''}
       <div class="post-actions">
         <button class="post-action copy" title="Copy" data-id="${post.id}">
           <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
@@ -324,14 +409,15 @@ function autoResize() {
 }
 
 function updateState() {
-  postBtn.disabled = input.value.trim().length === 0;
+  postBtn.disabled = input.value.trim().length === 0 && !pendingImage;
 }
 
 function addPost() {
   const text = input.value.trim();
-  if (!text) return;
+  if (!text && !pendingImage) return;
 
   const post = { id: Date.now().toString(), text, ts: Date.now() };
+  if (pendingImage) post.image = pendingImage;
   posts.unshift(post);
   savePosts();
 
@@ -339,6 +425,9 @@ function addPost() {
   emptyState.style.display = 'none';
 
   input.value = '';
+  pendingImage = null;
+  composePreview.style.display = 'none';
+  previewImg.src = '';
   autoResize();
   updateState();
   input.focus();
@@ -384,6 +473,28 @@ timeline.addEventListener('click', e => {
   } else if (btn.classList.contains('delete')) {
     deletePost(id);
   }
+});
+
+// Image handling
+mediaBtn.addEventListener('click', () => mediaInput.click());
+mediaInput.addEventListener('change', () => {
+  const file = mediaInput.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    pendingImage = e.target.result;
+    previewImg.src = pendingImage;
+    composePreview.style.display = 'block';
+    updateState();
+  };
+  reader.readAsDataURL(file);
+  mediaInput.value = '';
+});
+removeImgBtn.addEventListener('click', () => {
+  pendingImage = null;
+  previewImg.src = '';
+  composePreview.style.display = 'none';
+  updateState();
 });
 
 // Refresh timestamps every minute

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#1d9bf0"/>
+  <!-- Thought bubble -->
+  <ellipse cx="256" cy="210" rx="150" ry="110" fill="white"/>
+  <ellipse cx="160" cy="340" rx="30" ry="25" fill="white"/>
+  <ellipse cx="120" cy="390" rx="18" ry="15" fill="white"/>
+  <!-- Text "Posts" -->
+  <text x="256" y="230" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="72" font-weight="700" fill="#1d9bf0">Posts</text>
+</svg>
