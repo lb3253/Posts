@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Posts</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #000;
+    color: #e7e9ea;
+    min-height: 100dvh;
+  }
+
+  .header {
+    position: sticky;
+    top: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid #2f3336;
+    padding: 12px 16px;
+    z-index: 10;
+  }
+
+  .header h1 {
+    font-size: 20px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .compose {
+    border-bottom: 1px solid #2f3336;
+    padding: 12px 16px;
+  }
+
+  .compose-inner {
+    display: flex;
+    gap: 12px;
+  }
+
+  .avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #1d9bf0;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 18px;
+    color: #fff;
+  }
+
+  .compose-right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .compose-textarea {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: #e7e9ea;
+    font-size: 17px;
+    line-height: 1.4;
+    resize: none;
+    outline: none;
+    min-height: 52px;
+    font-family: inherit;
+  }
+
+  .compose-textarea::placeholder {
+    color: #71767b;
+  }
+
+  .compose-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #2f3336;
+  }
+
+  .char-count {
+    font-size: 13px;
+    color: #71767b;
+  }
+
+  .char-count.warning { color: #f4212e; }
+
+  .post-btn {
+    background: #1d9bf0;
+    color: #fff;
+    border: none;
+    border-radius: 9999px;
+    padding: 8px 20px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: opacity 0.15s;
+  }
+
+  .post-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  .post-btn:not(:disabled):active {
+    opacity: 0.8;
+  }
+
+  .timeline {
+    list-style: none;
+  }
+
+  .post {
+    padding: 12px 16px;
+    border-bottom: 1px solid #2f3336;
+    display: flex;
+    gap: 12px;
+    animation: fadeIn 0.25s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .post-body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .post-header {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 2px;
+  }
+
+  .post-name {
+    font-weight: 700;
+    font-size: 15px;
+  }
+
+  .post-handle {
+    color: #71767b;
+    font-size: 15px;
+  }
+
+  .post-dot {
+    color: #71767b;
+    font-size: 15px;
+  }
+
+  .post-time {
+    color: #71767b;
+    font-size: 15px;
+  }
+
+  .post-text {
+    font-size: 15px;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+
+  .post-actions {
+    display: flex;
+    gap: 48px;
+    margin-top: 10px;
+  }
+
+  .post-action {
+    background: none;
+    border: none;
+    color: #71767b;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .post-action svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+  }
+
+  .post-action.delete:active { color: #f4212e; }
+
+  .empty-state {
+    text-align: center;
+    color: #71767b;
+    padding: 48px 16px;
+    font-size: 15px;
+  }
+
+  .empty-state p:first-child {
+    font-size: 28px;
+    font-weight: 700;
+    color: #e7e9ea;
+    margin-bottom: 8px;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Posts</h1>
+</div>
+
+<div class="compose">
+  <div class="compose-inner">
+    <div class="avatar">Y</div>
+    <div class="compose-right">
+      <textarea
+        class="compose-textarea"
+        placeholder="What's happening?"
+        id="composeInput"
+        rows="1"
+      ></textarea>
+      <div class="compose-footer">
+        <span class="char-count" id="charCount">0 / 280</span>
+        <button class="post-btn" id="postBtn" disabled>Post</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<ul class="timeline" id="timeline"></ul>
+
+<div class="empty-state" id="emptyState">
+  <p>No posts yet</p>
+  <p>Write something above and hit Post.</p>
+</div>
+
+<script>
+const STORAGE_KEY = 'x_posts_timeline';
+const MAX_CHARS = 280;
+
+const input = document.getElementById('composeInput');
+const postBtn = document.getElementById('postBtn');
+const charCount = document.getElementById('charCount');
+const timeline = document.getElementById('timeline');
+const emptyState = document.getElementById('emptyState');
+
+let posts = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+function savePosts() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(posts));
+}
+
+function formatTime(ts) {
+  const d = new Date(ts);
+  const now = new Date();
+  const diffMs = now - d;
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffHr = Math.floor(diffMs / 3600000);
+
+  if (diffMin < 1) return 'now';
+  if (diffMin < 60) return diffMin + 'm';
+  if (diffHr < 24) return diffHr + 'h';
+
+  const sameYear = d.getFullYear() === now.getFullYear();
+  const month = d.toLocaleString('default', { month: 'short' });
+  const day = d.getDate();
+  return sameYear ? `${month} ${day}` : `${month} ${day}, ${d.getFullYear()}`;
+}
+
+function renderPost(post, prepend) {
+  const li = document.createElement('li');
+  li.className = 'post';
+  li.dataset.id = post.id;
+  li.innerHTML = `
+    <div class="avatar">Y</div>
+    <div class="post-body">
+      <div class="post-header">
+        <span class="post-name">You</span>
+        <span class="post-handle">@you</span>
+        <span class="post-dot">&middot;</span>
+        <span class="post-time">${formatTime(post.ts)}</span>
+      </div>
+      <div class="post-text">${escapeHtml(post.text)}</div>
+      <div class="post-actions">
+        <button class="post-action delete" title="Delete" data-id="${post.id}">
+          <svg viewBox="0 0 24 24"><path d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
+        </button>
+      </div>
+    </div>
+  `;
+  if (prepend) {
+    timeline.prepend(li);
+  } else {
+    timeline.appendChild(li);
+  }
+}
+
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function renderAll() {
+  timeline.innerHTML = '';
+  posts.forEach(p => renderPost(p, false));
+  emptyState.style.display = posts.length ? 'none' : 'block';
+}
+
+function autoResize() {
+  input.style.height = 'auto';
+  input.style.height = input.scrollHeight + 'px';
+}
+
+function updateCharCount() {
+  const len = input.value.length;
+  charCount.textContent = `${len} / ${MAX_CHARS}`;
+  charCount.className = 'char-count' + (len > MAX_CHARS ? ' warning' : '');
+  postBtn.disabled = len === 0 || len > MAX_CHARS;
+}
+
+function addPost() {
+  const text = input.value.trim();
+  if (!text || text.length > MAX_CHARS) return;
+
+  const post = { id: Date.now().toString(), text, ts: Date.now() };
+  posts.unshift(post);
+  savePosts();
+
+  renderPost(post, true);
+  emptyState.style.display = 'none';
+
+  input.value = '';
+  autoResize();
+  updateCharCount();
+  input.focus();
+}
+
+function deletePost(id) {
+  posts = posts.filter(p => p.id !== id);
+  savePosts();
+  const el = timeline.querySelector(`[data-id="${id}"]`);
+  if (el) el.remove();
+  emptyState.style.display = posts.length ? 'none' : 'block';
+}
+
+// Events
+input.addEventListener('input', () => { autoResize(); updateCharCount(); });
+postBtn.addEventListener('click', addPost);
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addPost(); }
+});
+timeline.addEventListener('click', e => {
+  const btn = e.target.closest('.delete');
+  if (btn) deletePost(btn.dataset.id);
+});
+
+// Refresh timestamps every minute
+setInterval(() => {
+  timeline.querySelectorAll('.post-time').forEach((el, i) => {
+    if (posts[i]) el.textContent = formatTime(posts[i].ts);
+  });
+}, 60000);
+
+// Init
+renderAll();
+updateCharCount();
+input.focus();
+</script>
+
+</body>
+</html>
